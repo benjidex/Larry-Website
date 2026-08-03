@@ -66,7 +66,7 @@ const allowedServices = new Set([
 async function sendBookingNotification(booking) {
   try {
     const mailOptions = {
-      from: `"Larry Lar Studio" <${STUDIO_EMAIL}>`,
+      from: `"Larry Lar Studios" <${STUDIO_EMAIL}>`,
       to: STUDIO_EMAIL,
       subject: `📸 New Booking: ${booking.service} — ${booking.name}`,
       html: `
