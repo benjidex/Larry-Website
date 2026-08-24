@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login | Larry Lar Studios</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0f0f10;
+        color: #f5f5f5;
+        font-family: Arial, sans-serif;
+      }
+      .card {
+        width: min(460px, 92vw);
+        background: #17181b;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px;
+        padding: 32px;
+      }
+      h1 { margin-top: 0; }
+      form {
+        display: grid;
+        gap: 16px;
+      }
+      label {
+        display: grid;
+        gap: 8px;
+        color: #cfcfcf;
+      }
+      input, button {
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 12px 14px;
+        font-size: 15px;
+      }
+      input {
+        background: #1f2024;
+        color: white;
+      }
+      button {
+        background: #d4af37;
+        border: none;
+        color: #111;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #status {
+        min-height: 24px;
+        color: #fbbf24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Admin Login</h1>
+      <form id="loginForm">
+        <label>
+          Email
+          <input type="email" name="email" required />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" required />
+        </label>
+        <button type="submit">Log in</button>
+        <div id="status"></div>
+      </form>
+    </div>
+
+    <script>
+      window.__SUPABASE_URL__ = 'https://hnibhdatzwvnynhwysew.supabase.co';
+      window.__SUPABASE_ANON_KEY__ = 'sb_publishable_wj8PGflVwrEVwf0zNYbFtA_MKp8Y2bV';
+      window.__ADMIN_ALLOWED_EMAILS__ = ['larrylarstudios@gmail.com', 'illebenjamin12@gmail.com'];
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const allowedAdminEmails = (window.__ADMIN_ALLOWED_EMAILS__ || ['your-admin-email@example.com'])
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean);
+
+      const supabase = window.supabase.createClient(window.__SUPABASE_URL__, window.__SUPABASE_ANON_KEY__, {
+        auth: { persistSession: true }
+      });
+
+      const form = document.getElementById('loginForm');
+      const status = document.getElementById('status');
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const errorParam = urlParams.get('error');
+      if (errorParam === 'not-authorized') {
+        status.textContent = 'This account is not authorized for admin access.';
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const email = form.email.value.trim();
+        const password = form.password.value.trim();
+
+        if (!email || !password) {
+          status.textContent = 'Please enter your email and password.';
+          return;
+        }
+
+        try {
+          status.textContent = 'Signing in...';
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+          if (error) throw error;
+
+          const signedInEmail = data.user?.email?.trim().toLowerCase();
+          if (!signedInEmail || !allowedAdminEmails.includes(signedInEmail)) {
+            await supabase.auth.signOut();
+            throw new Error('This email is not authorized for admin access.');
+          }
+
+          window.location.href = 'admin.html';
+        } catch (error) {
+          status.textContent = error.message || 'Login failed.';
+        }
+      });
+    </script>
+  </body>
+</html>
