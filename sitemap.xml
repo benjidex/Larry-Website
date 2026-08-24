@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.larrylarstudio.com/</loc>
+    <loc>https://www.larrylarstudios.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.larrylarstudio.com/#portfolio</loc>
+    <loc>https://www.larrylarstudios.com/#portfolio</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.larrylarstudio.com/#booking</loc>
+    <loc>https://www.larrylarstudios.com/#booking</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.larrylarstudio.com/#contact</loc>
+    <loc>https://www.larrylarstudios.com/#contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
