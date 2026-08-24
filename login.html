@@ -57,7 +57,7 @@
   <body>
     <div class="card">
       <h1>Admin Login</h1>
-      <form id="loginForm" novalidate>
+      <form id="loginForm" method="post" novalidate>
         <label>
           Email
           <input type="email" name="email" autocomplete="email" inputmode="email" maxlength="254" required />
@@ -69,6 +69,9 @@
         <button type="submit">Log in</button>
         <div id="status" aria-live="polite"></div>
       </form>
+      <p style="margin: 18px 0 0; text-align: center;">
+        <a href="admin.html" style="color: #d4af37; text-decoration: none;">Open admin dashboard</a>
+      </p>
     </div>
 
     <script>
