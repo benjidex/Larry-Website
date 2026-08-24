@@ -16,15 +16,24 @@ alter table public.gallery_images enable row level security;
 create index if not exists idx_gallery_images_active
   on public.gallery_images (is_active, sort_order, category);
 
-create policy if not exists "Gallery images public read"
-  on public.gallery_images
-  for select
-  to public
-  using (is_active = true);
 
-create policy if not exists "Gallery images authenticated full access"
-  on public.gallery_images
-  for all
-  to authenticated
-  using (true)
-  with check (true);
+-- Public read policy
+drop policy if exists "Gallery images public read"
+on public.gallery_images;
+
+create policy "Gallery images public read"
+on public.gallery_images
+for select
+using (true);
+
+
+-- Authenticated users full access
+drop policy if exists "Gallery images authenticated full access"
+on public.gallery_images;
+
+create policy "Gallery images authenticated full access"
+on public.gallery_images
+for all
+to authenticated
+using (true)
+with check (true);
