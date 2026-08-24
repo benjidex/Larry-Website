@@ -3,15 +3,16 @@ const uploadForm = document.getElementById('uploadForm');
 const galleryList = document.getElementById('galleryList');
 const logoutBtn = document.getElementById('logoutBtn');
 
-const allowedAdminEmails = (window.__ADMIN_ALLOWED_EMAILS__ || ['your-admin-email@example.com'])
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
+const allowedAdminEmails = () => {
+  const list = Array.isArray(window.__APP_CONFIG__?.adminEmails) ? window.__APP_CONFIG__.adminEmails : [];
+  return list.map((email) => email.trim().toLowerCase()).filter(Boolean);
+};
 
-const supabaseUrl = window.__SUPABASE_URL__;
-const supabaseAnonKey = window.__SUPABASE_ANON_KEY__;
-const bucketName = window.__SUPABASE_STORAGE_BUCKET__ || 'portfolio-images';
+const supabaseUrl = () => window.__APP_CONFIG__?.supabaseUrl || '';
+const supabaseAnonKey = () => window.__APP_CONFIG__?.supabaseAnonKey || '';
+const bucketName = () => window.__APP_CONFIG__?.storageBucket || 'portfolio-images';
 
-const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+const supabase = window.supabase.createClient(supabaseUrl(), supabaseAnonKey(), {
   auth: { persistSession: true }
 });
 
@@ -25,7 +26,7 @@ async function ensureAuthorizedAdmin() {
 
   const email = sessionData.session.user?.email?.trim().toLowerCase();
 
-  if (!email || !allowedAdminEmails.includes(email)) {
+  if (!email || !allowedAdminEmails().includes(email)) {
     await supabase.auth.signOut();
     window.location.href = 'login.html?error=not-authorized';
     return false;
@@ -81,7 +82,7 @@ async function loadGallery() {
         setStatus('Deleting image...');
 
         const { error: storageError } = await supabase.storage
-          .from(bucketName)
+          .from(bucketName())
           .remove([storagePath]);
 
         if (storageError) throw storageError;
@@ -120,13 +121,13 @@ uploadForm?.addEventListener('submit', async (event) => {
 
     const safeName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(bucketName)
+      .from(bucketName())
       .upload(`gallery/${safeName}`, file, { cacheControl: '3600', upsert: false });
 
     if (uploadError) throw uploadError;
 
     const { data: publicUrlData } = supabase.storage
-      .from(bucketName)
+      .from(bucketName())
       .getPublicUrl(uploadData.path);
 
     const { error: insertError } = await supabase.from('gallery_images').insert([{ 

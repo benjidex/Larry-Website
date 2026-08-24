@@ -168,10 +168,23 @@
     </div>
 
     <script>
-      window.__SUPABASE_URL__ = 'https://hnibhdatzwvnynhwysew.supabase.co';
-      window.__SUPABASE_ANON_KEY__ = 'sb_publishable_wj8PGflVwrEVwf0zNYbFtA_MKp8Y2bV';
-      window.__SUPABASE_STORAGE_BUCKET__ = 'portfolio-images';
-      window.__ADMIN_ALLOWED_EMAILS__ = ['larrylarstudios@gmail.com', 'illebenjamin12@gmail.com'];
+      window.__APP_CONFIG__ = { supabaseUrl: '', supabaseAnonKey: '', storageBucket: 'portfolio-images', adminEmails: [] };
+      async function loadAppConfig() {
+        try {
+          const response = await fetch('/api/config');
+          if (!response.ok) return;
+          const config = await response.json();
+          window.__APP_CONFIG__ = {
+            supabaseUrl: config.supabaseUrl || '',
+            supabaseAnonKey: config.supabaseAnonKey || '',
+            storageBucket: config.storageBucket || 'portfolio-images',
+            adminEmails: Array.isArray(config.adminEmails) ? config.adminEmails : []
+          };
+        } catch (error) {
+          console.warn('App config could not be loaded from the server.', error);
+        }
+      }
+      loadAppConfig();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="admin.js"></script>

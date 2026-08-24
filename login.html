@@ -57,32 +57,47 @@
   <body>
     <div class="card">
       <h1>Admin Login</h1>
-      <form id="loginForm">
+      <form id="loginForm" novalidate>
         <label>
           Email
-          <input type="email" name="email" required />
+          <input type="email" name="email" autocomplete="email" inputmode="email" maxlength="254" required />
         </label>
         <label>
           Password
-          <input type="password" name="password" required />
+          <input type="password" name="password" autocomplete="current-password" maxlength="128" required />
         </label>
         <button type="submit">Log in</button>
-        <div id="status"></div>
+        <div id="status" aria-live="polite"></div>
       </form>
     </div>
 
     <script>
-      window.__SUPABASE_URL__ = 'https://hnibhdatzwvnynhwysew.supabase.co';
-      window.__SUPABASE_ANON_KEY__ = 'sb_publishable_wj8PGflVwrEVwf0zNYbFtA_MKp8Y2bV';
-      window.__ADMIN_ALLOWED_EMAILS__ = ['larrylarstudios@gmail.com', 'illebenjamin12@gmail.com'];
+      window.__APP_CONFIG__ = { supabaseUrl: '', supabaseAnonKey: '', storageBucket: 'portfolio-images', adminEmails: [] };
+      async function loadAppConfig() {
+        try {
+          const response = await fetch('/api/config');
+          if (!response.ok) return;
+          const config = await response.json();
+          window.__APP_CONFIG__ = {
+            supabaseUrl: config.supabaseUrl || '',
+            supabaseAnonKey: config.supabaseAnonKey || '',
+            storageBucket: config.storageBucket || 'portfolio-images',
+            adminEmails: Array.isArray(config.adminEmails) ? config.adminEmails : []
+          };
+        } catch (error) {
+          console.warn('App config could not be loaded from the server.', error);
+        }
+      }
+      loadAppConfig();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      const allowedAdminEmails = (window.__ADMIN_ALLOWED_EMAILS__ || ['your-admin-email@example.com'])
-        .map((email) => email.trim().toLowerCase())
-        .filter(Boolean);
+      const allowedAdminEmails = () => {
+        const list = Array.isArray(window.__APP_CONFIG__?.adminEmails) ? window.__APP_CONFIG__.adminEmails : [];
+        return list.map((email) => email.trim().toLowerCase()).filter(Boolean);
+      };
 
-      const supabase = window.supabase.createClient(window.__SUPABASE_URL__, window.__SUPABASE_ANON_KEY__, {
+      const supabase = window.supabase.createClient(window.__APP_CONFIG__?.supabaseUrl || '', window.__APP_CONFIG__?.supabaseAnonKey || '', {
         auth: { persistSession: true }
       });
 
@@ -98,28 +113,39 @@
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        const email = form.email.value.trim();
-        const password = form.password.value.trim();
+        const email = form.email.value.trim().toLowerCase();
+        const password = form.password.value;
 
         if (!email || !password) {
+          form.password.value = '';
           status.textContent = 'Please enter your email and password.';
           return;
         }
 
+        await loadAppConfig();
+
+        const finalAllowedEmails = allowedAdminEmails();
+        const client = window.supabase.createClient(window.__APP_CONFIG__?.supabaseUrl || '', window.__APP_CONFIG__?.supabaseAnonKey || '', {
+          auth: { persistSession: true }
+        });
+
         try {
           status.textContent = 'Signing in...';
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          const { data, error } = await client.auth.signInWithPassword({ email, password });
 
           if (error) throw error;
 
           const signedInEmail = data.user?.email?.trim().toLowerCase();
-          if (!signedInEmail || !allowedAdminEmails.includes(signedInEmail)) {
-            await supabase.auth.signOut();
+          if (!signedInEmail || !finalAllowedEmails.includes(signedInEmail)) {
+            form.password.value = '';
+            await client.auth.signOut();
             throw new Error('This email is not authorized for admin access.');
           }
 
+          form.password.value = '';
           window.location.href = 'admin.html';
         } catch (error) {
+          form.password.value = '';
           status.textContent = error.message || 'Login failed.';
         }
       });

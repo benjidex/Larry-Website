@@ -9,9 +9,16 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
+app.use(express.static(__dirname));
+
 // ── Supabase client ──────────────────────────────────────────────────
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+const adminEmails = (process.env.ADMIN_ALLOWED_EMAILS || 'larrylarstudios@gmail.com,illebenjamin12@gmail.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY in .env');
@@ -191,6 +198,15 @@ app.get('/api/bookings', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
+});
+
+app.get('/api/config', (req, res) => {
+  res.json({
+    supabaseUrl,
+    supabaseAnonKey: publishableKey,
+    storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'portfolio-images',
+    adminEmails
+  });
 });
 
 // ── Start ────────────────────────────────────────────────────────────

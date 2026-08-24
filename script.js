@@ -182,8 +182,8 @@ document.addEventListener('keydown', (event) => {
 });
 
 async function loadPortfolioFromSupabase() {
-  const url = window.__SUPABASE_URL__;
-  const key = window.__SUPABASE_ANON_KEY__;
+  const url = window.__APP_CONFIG__?.supabaseUrl || '';
+  const key = window.__APP_CONFIG__?.supabaseAnonKey || '';
 
   if (!url || !key || !window.supabase) {
     renderGallery(fallbackImages);
