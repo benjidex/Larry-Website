@@ -1,5 +1,3 @@
-import { SpeedInsights } from "@vercel/speed-insights/next"
-
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
@@ -15,11 +13,6 @@ app.use(express.static(__dirname));
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
-const adminEmails = (process.env.ADMIN_ALLOWED_EMAILS || 'larrylarstudios@gmail.com,illebenjamin12@gmail.com')
-  .split(',')
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
-
 if (!supabaseUrl || !supabaseKey) {
   console.error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY in .env');
   process.exit(1);
@@ -204,8 +197,7 @@ app.get('/api/config', (req, res) => {
   res.json({
     supabaseUrl,
     supabaseAnonKey: publishableKey,
-    storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'portfolio-images',
-    adminEmails
+    storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'portfolio-images'
   });
 });
 
