@@ -1,11 +1,18 @@
-const express = require('express');
-const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
-const nodemailer = require('nodemailer');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 app.use(express.static(__dirname));
 
