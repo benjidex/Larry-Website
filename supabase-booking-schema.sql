@@ -1,7 +1,13 @@
 -- Production-ready reservation schema for Supabase
 -- Run this in the Supabase SQL Editor.
 
+-- Required extensions: pgcrypto for gen_random_uuid(), pg_cron is optional
+create extension if not exists pgcrypto;
 create extension if not exists pg_cron with schema extensions;
+
+-- NOTE: This file is the production-ready booking schema. If you also have
+-- `supabase-schema.sql` in the repo, prefer this file (it uses UUIDs,
+-- holds, and expiry functions) and remove or archive the older simpler schema.
 
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
@@ -264,27 +270,32 @@ $$;
 -- );
 
 -- Optional: RLS policies for anon/authenticated access
-create policy if not exists "Allow anonymous insert on bookings"
+drop policy if exists "Allow anonymous insert on bookings" on public.bookings;
+CREATE POLICY "Allow anonymous insert on bookings"
   on public.bookings for insert
   to anon
   with check (true);
 
-create policy if not exists "Allow authenticated insert on bookings"
+drop policy if exists "Allow authenticated insert on bookings" on public.bookings;
+CREATE POLICY "Allow authenticated insert on bookings"
   on public.bookings for insert
   to authenticated
   with check (true);
 
-create policy if not exists "Allow authenticated read own bookings"
+drop policy if exists "Allow authenticated read own bookings" on public.bookings;
+CREATE POLICY "Allow authenticated read own bookings"
   on public.bookings for select
   to authenticated
   using (user_id = auth.uid());
 
-create policy if not exists "Allow anonymous insert on pending_holds"
+drop policy if exists "Allow anonymous insert on pending_holds" on public.pending_holds;
+CREATE POLICY "Allow anonymous insert on pending_holds"
   on public.pending_holds for insert
   to anon
   with check (true);
 
-create policy if not exists "Allow authenticated read own holds"
+drop policy if exists "Allow authenticated read own holds" on public.pending_holds;
+CREATE POLICY "Allow authenticated read own holds"
   on public.pending_holds for select
   to authenticated
   using (held_by = auth.uid());

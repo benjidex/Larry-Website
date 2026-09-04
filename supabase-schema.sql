@@ -2,6 +2,9 @@
 -- Run this in your Supabase SQL Editor (https://supabase.com/dashboard/project/_/sql/new)
 -- Replace with your project reference from SUPABASE_URL
 
+-- NOTE: This is a simple/legacy schema. Prefer `supabase-booking-schema.sql`
+-- for production (uses UUIDs, pending/holds and expiry logic).
+
 -- Create bookings table
 CREATE TABLE IF NOT EXISTS public.bookings (
   id TEXT PRIMARY KEY,

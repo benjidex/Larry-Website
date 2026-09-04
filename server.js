@@ -57,12 +57,14 @@ function normalizePayload(payload) {
   const email = String(payload?.email ?? '').trim();
   const phone = String(payload?.phone ?? '').trim();
   const date = String(payload?.date ?? '').trim();
+  const slot_time = String(payload?.slot_time ?? payload?.booking_time ?? '').trim();
   const service = String(payload?.service ?? '').trim();
   const message = String(payload?.message ?? '').trim();
 
   const dateOk = /^\d{4}-\d{2}-\d{2}$/.test(date);
+  const timeOk = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(slot_time);
 
-  return { name, email, phone, date, service, message, dateOk };
+  return { name, email, phone, date, slot_time, service, message, dateOk, timeOk };
 }
 
 const allowedServices = new Set([
@@ -76,39 +78,46 @@ const allowedServices = new Set([
 
 async function sendBookingNotification(booking) {
   try {
+    const bName = booking.customer_name || booking.name || booking.customer_name;
+    const bEmail = booking.customer_email || booking.email || booking.customer_email;
+    const bPhone = booking.customer_phone || booking.phone || booking.customer_phone;
+    const bService = booking.service || booking.service;
+    const bDate = booking.booking_date || booking.date || booking.booking_date;
+    const bMessage = booking.message || booking.message;
+
     const mailOptions = {
       from: `"Larry Lar Studios" <${STUDIO_EMAIL}>`,
       to: STUDIO_EMAIL,
-      subject: `📸 New Booking: ${booking.service} — ${booking.name}`,
+      subject: `📸 New Booking: ${bService} — ${bName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #1a1a1a;">New Booking Request</h2>
           <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
             <tr>
               <td style="padding: 8px 12px; background: #f5f5f5; font-weight: bold; width: 120px;">Name</td>
-              <td style="padding: 8px 12px;">${booking.name}</td>
+              <td style="padding: 8px 12px;">${bName}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; background: #f5f5f5; font-weight: bold;">Email</td>
               <td style="padding: 8px 12px;">
-                <a href="mailto:${booking.email}">${booking.email}</a>
+                <a href="mailto:${bEmail}">${bEmail}</a>
               </td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; background: #f5f5f5; font-weight: bold;">Phone</td>
-              <td style="padding: 8px 12px;">${booking.phone}</td>
+              <td style="padding: 8px 12px;">${bPhone}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; background: #f5f5f5; font-weight: bold;">Service</td>
-              <td style="padding: 8px 12px;">${booking.service}</td>
+              <td style="padding: 8px 12px;">${bService}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; background: #f5f5f5; font-weight: bold;">Requested Date</td>
-              <td style="padding: 8px 12px;">${booking.date}</td>
+              <td style="padding: 8px 12px;">${bDate}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; background: #f5f5f5; font-weight: bold;">Message</td>
-              <td style="padding: 8px 12px;">${booking.message}</td>
+              <td style="padding: 8px 12px;">${bMessage}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; background: #f5f5f5; font-weight: bold;">Booked At</td>
@@ -116,7 +125,7 @@ async function sendBookingNotification(booking) {
             </tr>
           </table>
           <p style="margin-top: 20px; color: #666;">
-            Reply to <a href="mailto:${booking.email}">${booking.email}</a> to follow up with this client.
+            Reply to <a href="mailto:${bEmail}">${bEmail}</a> to follow up with this client.
           </p>
         </div>
       `
@@ -133,13 +142,14 @@ async function sendBookingNotification(booking) {
 
 app.post('/api/bookings', async (req, res) => {
   try {
-    const { name, email, phone, date, service, message, dateOk } = normalizePayload(req.body);
+    const { name, email, phone, date, slot_time, service, message, dateOk, timeOk } = normalizePayload(req.body);
 
     const errors = [];
     if (!name) errors.push('name is required');
     if (!isValidEmail(email)) errors.push('email is invalid');
     if (!phone) errors.push('phone is required');
     if (!dateOk) errors.push('date is invalid or missing');
+    if (!timeOk) errors.push('time is invalid or missing (HH:MM)');
     if (!allowedServices.has(service)) errors.push('service is invalid or missing');
     if (!message) errors.push('message is required');
 
@@ -153,28 +163,82 @@ app.post('/api/bookings', async (req, res) => {
       name,
       email,
       phone,
-      date,
+      booking_date: date,
+      booking_time: slot_time,
       service,
       message,
       status: 'pending'
     };
 
     if (supabase) {
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert(record)
-        .select()
-        .single();
+      // Try inserting with the production schema column names first
+      try {
+        const prodRecord = {
+          customer_name: name,
+          customer_email: email,
+          customer_phone: phone,
+          booking_date: date,
+          booking_time: slot_time,
+          service,
+          message,
+          status: record.status
+        };
 
-      if (error) {
-        console.error('Supabase insert error:', error);
-        return res.status(500).json({ ok: false, error: 'Database error', details: [error.message] });
+        const { data, error } = await supabase
+          .from('bookings')
+          .insert(prodRecord)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Send email notification asynchronously (don't block response)
+        sendBookingNotification(data);
+        return res.status(201).json({ ok: true, booking: data });
+      } catch (prodErr) {
+        console.warn('Prod insert failed:', prodErr.message || prodErr);
+        // If Supabase reports a missing column in the cached schema (PGRST204),
+        // disable Supabase usage for this process so we consistently fall back
+        // to local JSON storage instead of repeatedly failing.
+        const msg = prodErr?.message || '';
+        const code = prodErr?.code || '';
+        if (code === 'PGRST204' || msg.includes("Could not find the 'date' column")) {
+          console.warn('Detected Supabase schema mismatch (date column). Disabling Supabase fallback to local storage.');
+          supabase = null;
+          // fall through to local JSON fallback
+          // skip trying legacy insert
+          // (we don't return here so the outer flow continues to local storage)
+        } else {
+          try {
+            // Legacy schema uses name/email/phone/date
+            const legacyRecord = {
+              name,
+              email,
+              phone,
+              date,
+              service,
+              message
+            };
+
+            const { data: legacyData, error: legacyError } = await supabase
+              .from('bookings')
+              .insert(legacyRecord)
+              .select()
+              .single();
+
+            if (legacyError) {
+              console.error('Supabase insert error (legacy):', legacyError);
+              throw legacyError;
+            }
+
+            sendBookingNotification(legacyData);
+            return res.status(201).json({ ok: true, booking: legacyData });
+          } catch (legacyErr) {
+            console.error('Supabase insert error (both attempts):', prodErr, legacyErr);
+            // Fall through to local JSON fallback below
+          }
+        }
       }
-
-      // Send email notification asynchronously (don't block response)
-      sendBookingNotification(data);
-
-      return res.status(201).json({ ok: true, booking: data });
     }
 
     // Fallback: local JSON storage (data/bookings.json)
