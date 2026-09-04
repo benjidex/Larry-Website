@@ -3,8 +3,9 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import { dirname } from 'path';
+import { dirname, join as pathJoin } from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
 
 dotenv.config();
 
@@ -20,12 +21,13 @@ app.use(express.static(__dirname));
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY in .env');
-  process.exit(1);
-}
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+let supabase = null;
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+  console.warn('Supabase not configured — falling back to local JSON storage for bookings.');
+}
 
 // ── Email transporter (Gmail SMTP) ──────────────────────────────────
 const transporter = nodemailer.createTransport({
@@ -153,24 +155,51 @@ app.post('/api/bookings', async (req, res) => {
       phone,
       date,
       service,
-      message
+      message,
+      status: 'pending'
     };
 
-    const { data, error } = await supabase
-      .from('bookings')
-      .insert(record)
-      .select()
-      .single();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert(record)
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Supabase insert error:', error);
-      return res.status(500).json({ ok: false, error: 'Database error', details: [error.message] });
+      if (error) {
+        console.error('Supabase insert error:', error);
+        return res.status(500).json({ ok: false, error: 'Database error', details: [error.message] });
+      }
+
+      // Send email notification asynchronously (don't block response)
+      sendBookingNotification(data);
+
+      return res.status(201).json({ ok: true, booking: data });
     }
 
-    // Send email notification asynchronously (don't block response)
-    sendBookingNotification(data);
+    // Fallback: local JSON storage (data/bookings.json)
+    try {
+      const dbPath = pathJoin(__dirname, 'data', 'bookings.json');
+      let content = '[]';
+      try {
+        content = await fs.readFile(dbPath, 'utf8');
+      } catch (e) {
+        // file may not exist yet; we'll create it
+        content = '[]';
+      }
+      const list = JSON.parse(content || '[]');
+      list.unshift(record);
+      await fs.mkdir(pathJoin(__dirname, 'data'), { recursive: true });
+      await fs.writeFile(dbPath, JSON.stringify(list, null, 2), 'utf8');
 
-    return res.status(201).json({ ok: true, booking: data });
+      // async email (best-effort)
+      sendBookingNotification(record).catch(() => {});
+
+      return res.status(201).json({ ok: true, booking: record });
+    } catch (err) {
+      console.error('Local storage error:', err);
+      return res.status(500).json({ ok: false, error: 'Local storage error' });
+    }
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: 'Internal server error' });
@@ -179,17 +208,35 @@ app.post('/api/bookings', async (req, res) => {
 
 app.get('/api/bookings', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .order('created_at', { ascending: false });
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Supabase select error:', error);
-      return res.status(500).json({ ok: false, error: 'Database error', details: [error.message] });
+      if (error) {
+        console.error('Supabase select error:', error);
+        return res.status(500).json({ ok: false, error: 'Database error', details: [error.message] });
+      }
+
+      return res.json({ ok: true, bookings: data });
     }
 
-    return res.json({ ok: true, bookings: data });
+    // Fallback: read from local JSON
+    try {
+      const dbPath = pathJoin(__dirname, 'data', 'bookings.json');
+      let content = '[]';
+      try {
+        content = await fs.readFile(dbPath, 'utf8');
+      } catch (e) {
+        content = '[]';
+      }
+      const list = JSON.parse(content || '[]');
+      return res.json({ ok: true, bookings: list });
+    } catch (err) {
+      console.error('Local storage read error:', err);
+      return res.status(500).json({ ok: false, error: 'Local storage error' });
+    }
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: 'Internal server error' });
