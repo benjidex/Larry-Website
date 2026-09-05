@@ -57,14 +57,11 @@ function normalizePayload(payload) {
   const email = String(payload?.email ?? '').trim();
   const phone = String(payload?.phone ?? '').trim();
   const date = String(payload?.date ?? '').trim();
-  const slot_time = String(payload?.slot_time ?? payload?.booking_time ?? '').trim();
   const service = String(payload?.service ?? '').trim();
   const message = String(payload?.message ?? '').trim();
-
   const dateOk = /^\d{4}-\d{2}-\d{2}$/.test(date);
-  const timeOk = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(slot_time);
 
-  return { name, email, phone, date, slot_time, service, message, dateOk, timeOk };
+  return { name, email, phone, date, service, message, dateOk };
 }
 
 const allowedServices = new Set([
@@ -149,7 +146,6 @@ app.post('/api/bookings', async (req, res) => {
     if (!isValidEmail(email)) errors.push('email is invalid');
     if (!phone) errors.push('phone is required');
     if (!dateOk) errors.push('date is invalid or missing');
-    if (!timeOk) errors.push('time is invalid or missing (HH:MM)');
     if (!allowedServices.has(service)) errors.push('service is invalid or missing');
     if (!message) errors.push('message is required');
 
@@ -164,7 +160,6 @@ app.post('/api/bookings', async (req, res) => {
       email,
       phone,
       booking_date: date,
-      booking_time: slot_time,
       service,
       message,
       status: 'pending'
@@ -178,7 +173,6 @@ app.post('/api/bookings', async (req, res) => {
           customer_email: email,
           customer_phone: phone,
           booking_date: date,
-          booking_time: slot_time,
           service,
           message,
           status: record.status

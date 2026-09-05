@@ -24,12 +24,11 @@
       email: form.elements.email.value.trim(),
       phone: form.elements.phone.value.trim(),
       date: form.elements.date.value,
-      slot_time: form.elements.slot_time.value,
       service: form.elements.service.value,
       message: form.elements.message?.value?.trim?.() || ''
     };
 
-    if (!payload.name || !payload.email || !payload.phone || !payload.date || !payload.slot_time || !payload.service || !payload.message) {
+    if (!payload.name || !payload.email || !payload.phone || !payload.date || !payload.service || !payload.message) {
       await showMessage('Please fill in all fields before reserving a slot.', true);
       return;
     }
@@ -37,33 +36,9 @@
     try {
       await showMessage('Reserving your session slot...');
 
-      if (supabase) {
-        const { data, error } = await supabase.rpc('create_booking_hold', {
-          p_name: payload.name,
-          p_email: payload.email,
-          p_phone: payload.phone,
-          p_booking_date: payload.date,
-          p_booking_time: payload.slot_time,
-          p_service: payload.service,
-          p_message: payload.message,
-          p_hold_minutes: 10
-        });
-
-        if (error) {
-          throw new Error(error.message || 'Unable to reserve your slot.');
-        }
-
-        if (!data?.success) {
-          throw new Error(data?.error || 'This slot is no longer available.');
-        }
-
-        // Confirm immediately in this simplified flow
-        await showMessage(`Reserved! Your session for ${payload.date} at ${payload.slot_time} is now confirmed.`, false);
-        form.reset();
-        return;
-      }
-
-      // Fallback: post to local server endpoint
+      // Always post to the server endpoint which handles Supabase and local fallback.
+      // Using client-side Supabase RPC caused failures when the remote DB schema or RPC
+      // was not deployed. Server-side POST ensures consistent behavior and error handling.
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,7 +51,7 @@
         throw new Error(errMsg || 'Could not reserve slot.');
       }
 
-      await showMessage(`Reserved! Your session for ${payload.date} at ${payload.slot_time} is now confirmed.`, false);
+      await showMessage(`Reserved! Your session for ${payload.date} is now confirmed.`, false);
       form.reset();
     } catch (err) {
       await showMessage(err.message || 'Could not complete booking.', true);

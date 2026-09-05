@@ -8,7 +8,6 @@
         email: 'test@example.com',
         phone: '1234567890',
         date: '2026-09-10',
-        slot_time: '10:00',
         service: 'Portrait',
         message: 'hello'
       })
