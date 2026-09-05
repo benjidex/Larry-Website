@@ -139,7 +139,7 @@ async function sendBookingNotification(booking) {
 
 app.post('/api/bookings', async (req, res) => {
   try {
-    const { name, email, phone, date, slot_time, service, message, dateOk, timeOk } = normalizePayload(req.body);
+    const { name, email, phone, date, service, message, dateOk } = normalizePayload(req.body);
 
     const errors = [];
     if (!name) errors.push('name is required');
@@ -173,6 +173,8 @@ app.post('/api/bookings', async (req, res) => {
           customer_email: email,
           customer_phone: phone,
           booking_date: date,
+          // Provide a default booking_time to satisfy DB schemas that require it
+          booking_time: '00:00:00',
           service,
           message,
           status: record.status
