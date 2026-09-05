@@ -10,6 +10,12 @@
   const canUseSupabase = !!(supabaseUrl && supabaseAnonKey && window.supabase && window.supabase.createClient);
   const supabase = canUseSupabase ? window.supabase.createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } }) : null;
 
+  // If the page is opened from the local filesystem (file://), relative
+  // paths like `/api/bookings` resolve incorrectly. Use an explicit
+  // localhost origin for local testing.
+  const originIsFile = location.protocol === 'file:' || !location.hostname;
+  const apiBase = originIsFile ? (`http://localhost:${window.__APP_CONFIG__?.port || '3001'}`) : '';
+
   async function showMessage(text, isError = false) {
     messageBox.textContent = text;
     messageBox.classList.add('visible');
@@ -39,7 +45,7 @@
       // Always post to the server endpoint which handles Supabase and local fallback.
       // Using client-side Supabase RPC caused failures when the remote DB schema or RPC
       // was not deployed. Server-side POST ensures consistent behavior and error handling.
-      const response = await fetch('/api/bookings', {
+      const response = await fetch(apiBase + '/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
