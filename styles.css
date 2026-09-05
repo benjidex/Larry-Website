@@ -1,5 +1,4 @@
 :root {
-  --header-height: 72px;
   color-scheme: dark;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #111;
@@ -15,7 +14,6 @@ body {
   min-height: 100vh;
   background: radial-gradient(circle at top, #222 0%, #050505 55%);
   color: #f7f7f7;
-  padding-top: var(--header-height);
 }
 
 img {
@@ -52,7 +50,6 @@ textarea {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
   z-index: 100;
-  height: var(--header-height);
 }
 
 
@@ -61,7 +58,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 12px 0;
+  padding: 18px 0;
 }
 
 .brand {
@@ -95,7 +92,7 @@ textarea {
 
 .site-nav a::after {
   content: "";
-  position: absolute;
+  position: fixed;
   left: 0;
   bottom: -2px;
   width: 0;
